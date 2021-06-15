@@ -2,12 +2,13 @@ package com.jm.web.boot_crud.controllers;
 
 import com.jm.web.boot_crud.model.Role;
 import com.jm.web.boot_crud.model.User;
+import com.jm.web.boot_crud.service.RoleService;
 import com.jm.web.boot_crud.service.UserService;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashSet;
@@ -16,34 +17,37 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
-public class RestControllers {
+public class AdminController {
     private final UserService userService;
+    private final RoleService roleService;
 
     @Autowired
-    public RestControllers(UserService userService) {
+    public AdminController(UserService userService, RoleService roleService) {
         this.userService = userService;
-    }
-
-    @GetMapping("/userInfo")
-    public ResponseEntity<User> getUserInfo() {
-        User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        currentUser.setPassword("");
-        return ResponseEntity.ok().body(currentUser);
+        this.roleService = roleService;
     }
 
     @GetMapping("/admin/user/{id}")
-    public ResponseEntity<User> getUserById(@PathVariable("id") Long id) throws ChangeSetPersister.NotFoundException {
-        return ResponseEntity.ok().body(userService.getUserById(id));
+    public ResponseEntity<User> getUserById(@PathVariable("id") Long id) {
+        try {
+            User user = userService.getUserById(id);
+            user.setPassword("");
+            return ResponseEntity.ok().body(user);
+        } catch (ChangeSetPersister.NotFoundException ex) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
     }
 
     @GetMapping("/admin/getAllUsers")
     public ResponseEntity<Iterable<User>> getAllUsers() {
-        return ResponseEntity.ok().body(userService.getAllUsers());
+        List<User> users = userService.getAllUsers();
+        users.forEach((User) -> User.setPassword(""));
+        return ResponseEntity.ok().body(users);
     }
 
     @GetMapping("/admin/getAllRoles")
     public ResponseEntity<Iterable<Role>> getAllRoles() {
-        List<Role> roles = userService.getAllRoles();
+        List<Role> roles = roleService.getAllRoles();
         return ResponseEntity.ok().body(roles);
     }
 
@@ -51,9 +55,9 @@ public class RestControllers {
     public ResponseEntity<Long> createUser(@RequestBody User user) {
         Set<Role> tmpRole = new HashSet<>();
         if (user.getRoles().isEmpty()) {
-            tmpRole.add(userService.getRoleByName("USER"));
+            tmpRole.add(roleService.getByName("USER"));
         } else {
-            tmpRole = user.getRoles().stream().map(role -> userService.getRoleByName(role.getName())).collect(Collectors.toSet());
+            tmpRole = user.getRoles().stream().map(role -> roleService.getByName(role.getName())).collect(Collectors.toSet());
         }
         user.setRoles(tmpRole);
         userService.addUser(user);
@@ -67,16 +71,20 @@ public class RestControllers {
     }
 
     @PatchMapping("/admin/editUser")
-    public ResponseEntity<?> editUser(@RequestBody User user) throws ChangeSetPersister.NotFoundException {
+    public ResponseEntity<?> editUser(@RequestBody User user) {
         Set<Role> tmpRole = new HashSet<>();
         if (user.getRoles().isEmpty()) {
-            tmpRole.add(userService.getRoleByName("USER"));
+            tmpRole.add(roleService.getByName("USER"));
         } else {
-            tmpRole = user.getRoles().stream().map(role -> userService.getRoleByName(role.getName())).collect(Collectors.toSet());
+            tmpRole = user.getRoles().stream().map(role -> roleService.getByName(role.getName())).collect(Collectors.toSet());
         }
         user.setRoles(tmpRole);
-        userService.updateUser(user);
-        return new ResponseEntity<>(user.getId(), HttpStatus.OK);
+        try {
+            userService.updateUser(user);
+            return new ResponseEntity<>(user.getId(), HttpStatus.OK);
+        } catch (ChangeSetPersister.NotFoundException ex) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
     }
-
 }
+
