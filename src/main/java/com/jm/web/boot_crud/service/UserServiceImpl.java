@@ -2,7 +2,6 @@ package com.jm.web.boot_crud.service;
 
 import com.jm.web.boot_crud.model.Role;
 import com.jm.web.boot_crud.model.User;
-import com.jm.web.boot_crud.repository.RoleRepository;
 import com.jm.web.boot_crud.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -21,16 +20,16 @@ import java.util.List;
 @Service
 public class UserServiceImpl implements UserService {
 
-    private final RoleRepository roleRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final RoleService roleService;
 
     @Autowired
-    public UserServiceImpl(RoleRepository roleRepository,
-                           UserRepository userRepository,
+    public UserServiceImpl(UserRepository userRepository,
+                           RoleService roleService,
                            PasswordEncoder passwordEncoder) {
-        this.roleRepository = roleRepository;
         this.userRepository = userRepository;
+        this.roleService = roleService;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -44,10 +43,9 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public Long addUser(User user) {
+    public void addUser(User user) {
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         userRepository.save(user);
-        return user.getId();
     }
 
     @Override
@@ -83,27 +81,6 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Transactional
-    public List<Role> getAllRoles() {
-        List<Role> roleList = new ArrayList<>();
-        roleRepository.findAll().forEach(roleList::add);
-        return roleList;
-    }
-
-    @Override
-    @Transactional
-    public Role getRoleByName(String name) {
-        return roleRepository.findByName(name);
-    }
-
-    @Override
-    @Transactional
-    public Role getRoleById(Long id) throws ChangeSetPersister.NotFoundException {
-        return roleRepository.findById(id)
-                .orElseThrow(ChangeSetPersister.NotFoundException::new);
-    }
-
-    @Override
     public UserDetails loadUserByUsername(String s) throws UsernameNotFoundException {
         User user = userRepository.findByEmail(s);
         if (user == null) {
@@ -116,13 +93,13 @@ public class UserServiceImpl implements UserService {
     @Transactional
     @PostConstruct
     public void initDB() {
-        if (roleRepository.findByName("ADMIN") == null) {
+        if (roleService.getByName("ADMIN") == null) {
             System.out.println("Let's create a role 'ADMIN' necessary for work");
-            roleRepository.save(new Role("ADMIN"));
+            roleService.createRole("ADMIN");
         }
-        if (roleRepository.findByName("USER") == null) {
+        if (roleService.getByName("USER") == null) {
             System.out.println("Let's create a role 'USER' necessary for work");
-            roleRepository.save(new Role("USER"));
+            roleService.createRole("USER");
         }
         if (userRepository.findByEmail("admin@mail.ru") == null) {
             System.out.println("Let's create admin-user necessary for work, with credentials: \n" +
@@ -133,8 +110,8 @@ public class UserServiceImpl implements UserService {
                     "admin@mail.ru",
                     "password",
                     new HashSet<Role>() {{
-                        add(roleRepository.findByName("ADMIN"));
-                        add(roleRepository.findByName("USER"));
+                        add(roleService.getByName("ADMIN"));
+                        add(roleService.getByName("USER"));
                     }});
             addUser(user);
         }
