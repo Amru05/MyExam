@@ -42,46 +42,67 @@ async function addNewUser() {
         }
     })
 
-    let response = await fetch('/admin/addUser', {
-        method: 'POST',
-        body: JSON.stringify({
-            firstName: firstName,
-            lastName: lastName,
-            age: age,
-            email: email,
-            password: password,
-            roles: userRoles
-        }),
-        headers: {
-            "Content-type": "application/json; charset=UTF-8"
-        }
-    });
-    let newUserId = await response.text();
-
-    let roles = [];
-    if (userRoles.length === 0) {
-        userRoles.push("USER")
+    let allErrorAlerts = document.querySelectorAll('[id^=AlertNU]');
+    for (let i = 0; i < allErrorAlerts.length; i++) {
+        allErrorAlerts[i].parentNode.removeChild(allErrorAlerts[i]);
     }
-    userRoles.forEach(role => roles.push(new Object({name: role})));
-    addRow2UsersTable({
-        id: newUserId,
-        firstName: firstName,
-        lastName: lastName,
-        age: age,
-        email: email,
-        roles: roles
-    });
 
-    document.getElementById('newuserFirstName').value = "";
-    document.getElementById('newuserLastName').value = "";
-    document.getElementById('newuserAge').value = "";
-    document.getElementById('newuserEmail').value = "";
-    document.getElementById('newuserPassword').value = "";
-    Array.from(document.getElementById('newuserRole').options).forEach(option => {
-        option.selected = false;
+    new Promise((resolve, reject) => {
+        fetch('/admin/addUser', {
+            method: 'POST',
+            body: JSON.stringify({
+                firstName: firstName,
+                lastName: lastName,
+                age: age,
+                email: email,
+                password: password,
+                roles: userRoles
+            }),
+            headers: {
+                "Content-type": "application/json; charset=UTF-8"
+            }
+        })
+            .then(parseJSON)
+            .then((response) => {
+                if (response.status === 400) {
+                    let errorMsg = response.json.ErrorMsg;
+                    for (let [fieldName, fieldErr] of Object.entries(errorMsg)) {
+                        let alertEl = document.createElement("div");
+                        alertEl.setAttribute("class", "alert alert-danger p-1");
+                        alertEl.setAttribute("id", "AlertNU" + fieldName[0].toUpperCase() + fieldName.slice(1));
+                        alertEl.appendChild(document.createTextNode(fieldErr));
+                        let alertField = document.getElementById("newuser" + fieldName[0].toUpperCase() + fieldName.slice(1));
+                        alertField.parentNode.insertBefore(alertEl, alertField.nextSibling);
+                    }
+                } else if (response.status === 200) {
+                    let newUserId = response.json.id;
+                    let roles = [];
+                    if (userRoles.length === 0) {
+                        userRoles.push("USER")
+                    }
+                    userRoles.forEach(role => roles.push(new Object({name: role})));
+                    addRow2UsersTable({
+                        id: newUserId,
+                        firstName: firstName,
+                        lastName: lastName,
+                        age: age,
+                        email: email,
+                        roles: roles
+                    });
+
+                    document.getElementById('newuserFirstName').value = "";
+                    document.getElementById('newuserLastName').value = "";
+                    document.getElementById('newuserAge').value = "";
+                    document.getElementById('newuserEmail').value = "";
+                    document.getElementById('newuserPassword').value = "";
+                    Array.from(document.getElementById('newuserRole').options).forEach(option => {
+                        option.selected = false;
+                    })
+
+                    bootstrap.Tab.getInstance(document.querySelector('#userTabBtn')).show()
+                }
+            })
     })
-
-    bootstrap.Tab.getInstance(document.querySelector('#userTabBtn')).show()
 }
 
 async function setOptionRoles() {
@@ -183,46 +204,66 @@ async function editUser(id) {
         userRoles.push("USER")
     }
 
-    let response = await fetch('/admin/editUser', {
-        method: 'PATCH',
-        body: JSON.stringify({
-            id: userId,
-            firstName: firstName,
-            lastName: lastName,
-            age: age,
-            email: email,
-            password: password,
-            roles: userRoles
-        }),
-        headers: {
-            "Content-type": "application/json; charset=UTF-8"
-        }
-    });
+    let allErrorAlerts = document.querySelectorAll('[id^=AlertEU]');
+    for (let i = 0; i < allErrorAlerts.length; i++) {
+        allErrorAlerts[i].parentNode.removeChild(allErrorAlerts[i]);
+    }
 
-    let userRow = document.getElementById("userTabRow_" + userId);
-    userRow.innerHTML = "";
-    userRow.setAttribute('id', "userTabRow_" + userId);
-    let cell = userRow.insertCell();
-    cell.innerHTML = userId;
-    cell = userRow.insertCell();
-    cell.innerHTML = firstName;
-    cell = userRow.insertCell();
-    cell.innerHTML = lastName;
-    cell = userRow.insertCell();
-    cell.innerHTML = age;
-    cell = userRow.insertCell();
-    cell.innerHTML = email;
-    cell = userRow.insertCell();
-    cell.innerHTML = userRoles.toString();
-    cell = userRow.insertCell();
-    cell.innerHTML = '<button class="btn btn-sm btn-info" type="button" onclick="showEditUser(' + userId + ')">Edit</button>';
-    cell = userRow.insertCell()
-    cell.innerHTML = '<button class="btn btn-sm btn-danger" type="button" onclick="showDeleteUser(' + userId + ')">Delete</button>'
+    new Promise((resolve, reject) => {
+        fetch('/admin/editUser', {
+            method: 'PATCH',
+            body: JSON.stringify({
+                id: userId,
+                firstName: firstName,
+                lastName: lastName,
+                age: age,
+                email: email,
+                password: password,
+                roles: userRoles
+            }),
+            headers: {
+                "Content-type": "application/json; charset=UTF-8"
+            }
+        })
+            .then(parseJSON)
+            .then((response) => {
+                if (response.status === 400) {
+                    let errorMsg = response.json.ErrorMsg;
+                    for (let [fieldName, fieldErr] of Object.entries(errorMsg)) {
+                        let alertEl = document.createElement("div");
+                        alertEl.setAttribute("class", "alert alert-danger p-1");
+                        alertEl.setAttribute("id", "AlertEU" + fieldName[0].toUpperCase() + fieldName.slice(1));
+                        alertEl.appendChild(document.createTextNode(fieldErr));
+                        let alertField = document.getElementById("edituser" + fieldName[0].toUpperCase() + fieldName.slice(1));
+                        alertField.parentNode.insertBefore(alertEl, alertField.nextSibling);
+                    }
+                } else if (response.status === 200) {
+                    let userRow = document.getElementById("userTabRow_" + userId);
+                    userRow.innerHTML = "";
+                    userRow.setAttribute('id', "userTabRow_" + userId);
+                    let cell = userRow.insertCell();
+                    cell.innerHTML = userId;
+                    cell = userRow.insertCell();
+                    cell.innerHTML = firstName;
+                    cell = userRow.insertCell();
+                    cell.innerHTML = lastName;
+                    cell = userRow.insertCell();
+                    cell.innerHTML = age;
+                    cell = userRow.insertCell();
+                    cell.innerHTML = email;
+                    cell = userRow.insertCell();
+                    cell.innerHTML = userRoles.toString();
+                    cell = userRow.insertCell();
+                    cell.innerHTML = '<button class="btn btn-sm btn-info" type="button" onclick="showEditUser(' + userId + ')">Edit</button>';
+                    cell = userRow.insertCell()
+                    cell.innerHTML = '<button class="btn btn-sm btn-danger" type="button" onclick="showDeleteUser(' + userId + ')">Delete</button>'
 
-    let editUserModal = bootstrap.Modal.getInstance(document.getElementById("editUser"));
-    editUserModal.hide();
+                    let editUserModal = bootstrap.Modal.getInstance(document.getElementById("editUser"));
+                    editUserModal.hide();
+                }
+            })
+    })
 }
-
 
 function addRow2UsersTable(user) {
     let usersListTBody = document.getElementById("usersListTab");
@@ -244,4 +285,13 @@ function addRow2UsersTable(user) {
     cell.innerHTML = '<button class="btn btn-sm btn-info" type="button" onclick="showEditUser(' + user.id + ')">Edit</button>';
     cell = row.insertCell()
     cell.innerHTML = '<button class="btn btn-sm btn-danger" type="button" onclick="showDeleteUser(' + user.id + ')">Delete</button>'
+}
+
+function parseJSON(response) {
+    return new Promise((resolve) => response.json()
+        .then((json) => resolve({
+            status: response.status,
+            ok: response.ok,
+            json,
+        })));
 }
